@@ -1,0 +1,104 @@
+Practica 1
+
+ Servidor NFS (192.168.0.199)
+ Instalación de NFS
+sudo dnf install nfs-utils -y
+
+Instala las herramientas necesarias para configurar y utilizar el servicio NFS.
+
+ Activar servicio NFS
+sudo systemctl enable --now nfs-server
+
+Habilita el servicio NFS para que inicie automáticamente y lo ejecuta inmediatamente.
+
+ Crear directorio compartido
+sudo mkdir /OS3
+
+Crea el directorio que será compartido en la red.
+
+ Crear archivos
+cd /OS3
+for i in {1..100}; do sudo touch Adrian${i}.txt; done
+
+Genera 100 archivos dentro del directorio para pruebas.
+
+ Asignar permisos
+sudo chmod -R 755 /OS3
+
+Otorga permisos de lectura y ejecución a todos los usuarios.
+
+sudo chown -R nfsnobody:nfsnobody /OS3
+
+Asigna el propietario del directorio al usuario utilizado por NFS.
+
+ Configuración de Firewall
+sudo systemctl enable --now firewalld
+sudo firewall-cmd --permanent --add-service=nfs
+sudo firewall-cmd --permanent --add-service=mountd
+sudo firewall-cmd --permanent --add-service=rpc-bind
+sudo firewall-cmd --reload
+
+Permite el tráfico necesario para el funcionamiento de NFS.
+
+ Desactivar SELinux (modo permisivo)
+sudo setenforce 0
+
+Desactiva temporalmente las restricciones de SELinux para evitar bloqueos en el acceso NFS.
+
+ Configurar directorios compartidos
+sudo nano /etc/exports
+
+Agregar:
+
+/OS3 192.168.0.198(rw,sync,no_subtree_check)
+
+Define qué directorio se comparte, con qué cliente y con qué permisos.
+
+ Aplicar configuración
+sudo exportfs -rav
+
+Actualiza y aplica la configuración de los recursos compartidos.
+
+ Cliente NFS (192.168.0.198)
+ Instalar cliente NFS
+sudo dnf install nfs-utils -y
+
+Instala las herramientas necesarias para conectarse a un servidor NFS.
+Crear punto de montaje
+sudo mkdir /mnt/nfs
+
+Crea el directorio donde se montará el recurso compartido.
+
+Montar recurso NFS
+sudo mount 192.168.0.199:/OS3 /mnt/nfs
+
+Monta manualmente el directorio compartido del servidor.
+
+Verificar archivos
+ls /mnt/nfs
+
+Permite visualizar los archivos compartidos desde el servidor.
+
+Montaje Automático
+Editar fstab
+sudo nano /etc/fstab
+
+Agregar:
+
+192.168.0.199:/OS3 /mnt/nfs nfs defaults 0 0
+
+Configura el montaje automático al iniciar el sistema.
+
+Probar configuración
+sudo umount /mnt/nfs
+sudo mount -a
+
+Desmonta y vuelve a montar todos los sistemas definidos en fstab para validar.
+
+Prueba Final
+Reiniciar sistema
+sudo reboot
+Verificar montaje
+ls /mnt/nfs
+
+Confirma que el directorio se monta automáticamente y los archivos están disponibles.
