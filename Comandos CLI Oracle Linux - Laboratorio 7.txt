@@ -216,3 +216,165 @@ Verificación de Sincronización
 tail -f /samba/adrian99.txt
 
 Permite monitorear cambios en tiempo real para comprobar la comunicación entre sistemas.
+
+Práctica 3 –
+Configuración de Samba como AD DC en Oracle Linux
+
+IP del servidor: 192.168.0.199
+Interfaz de red: eth0
+Dominio: OS3.inet
+Controlador: dc1
+Usuario de prueba: lanegracubana
+
+Paso 0: Preparar el sistema
+# Cambiar el hostname del servidor
+hostnamectl set-hostname dc1.inet
+hostname
+hostname -f
+
+Explicación: Establece un nombre único para tu servidor. Esto es crítico para Active Directory.
+
+# Acceder como root
+sudo su
+# Configurar hosts
+echo "192.168.0.199 dc1.OS3.inet OS3.inet dc1" >> /etc/hosts
+
+Explicación: Asocia IP y nombre de host para resolución interna de nombres.
+
+# Actualizar el sistema
+dnf -y update
+
+# Instalar repositorios y herramientas adicionales
+dnf install -y oracle-epel-release-el10
+sudo dnf config-manager --set-enabled ol9_codeready_builder
+dnf makecache
+dnf -y install wget tar gcc make python3-devel
+
+Explicación: Actualiza paquetes y prepara herramientas de compilación.
+
+Paso 1: Descargar e instalar Samba
+# Crear carpeta y descargar Samba
+mkdir -p /samba && cd /samba
+wget https://download.samba.org/pub/samba/stable/samba-4.16.2.tar.gz
+tar -zxvf samba-4.16.2.tar.gz
+cd samba-4.16.2/
+# Instalar dependencias para compilar Samba
+sudo dnf -y install docbook-style-xsl python3-markdown bison dbus-devel flex gdb \
+gnutls-devel jansson-devel keyutils-libs-devel krb5-workstation \
+libacl-devel libaio-devel libarchive-devel libattr-devel libblkid-devel \
+libtasn1 libtasn1-tools libxml2-devel libxslt lmdb-devel openldap-devel \
+pam-devel perl perl-ExtUtils-MakeMaker perl-Parse-Yapp popt-devel \
+python3-cryptography python3-dns python3-gpg readline-devel rpcgen \
+systemd-devel zlib-devel perl-JSON gpgme-devel screen
+
+Explicación: Estas librerías son necesarias para soporte LDAP, Kerberos, seguridad y administración de Samba.
+
+# Configurar la compilación de Samba
+./configure --prefix=/usr/local/samba --enable-fhs --with-ads --with-systemd
+
+# Compilar Samba
+make -j$(nproc)
+make install
+
+# Actualizar PATH
+echo 'export PATH=/usr/local/samba/bin:/usr/local/samba/sbin:$PATH' >> ~/.bash_profile
+source ~/.bash_profile
+
+Explicación: Esto instala Samba en /usr/local/samba y hace que los comandos de Samba sean globalmente accesibles.
+
+Paso 2: Configurar librerías y SELinux
+# Configurar ld.so para librerías Samba
+echo "/usr/local/samba/lib" > /etc/ld.so.conf.d/samba.conf
+echo "/usr/local/samba/lib64" >> /etc/ld.so.conf.d/samba.conf
+ldconfig
+
+# Desactivar temporalmente SELinux
+setenforce 0
+
+Explicación: Permite que las librerías de Samba se carguen correctamente y SELinux no bloquee el servicio mientras configuramos AD.
+
+Paso 3: Provisionar el dominio
+samba-tool domain provision \
+--use-rfc2307 \
+--interactive \
+--option="interfaces= lo eth0" \
+--option="bind interfaces only=yes"
+
+Realm: OS3.INET
+
+Domain: OS3
+
+Server Role: dc
+
+DNS backend: SAMBA_INTERNAL
+
+DNS forwarder: 8.8.8.8
+
+Contraseña de administrador: Teletubies123
+
+Explicación: Crea el dominio Active Directory con soporte DNS interno, mapeando interfaces de red para la comunicación interna.
+
+Paso 4: Configurar Kerberos y PATH
+# Copiar krb5.conf generado por Samba
+cp /usr/local/samba/var/lib/samba/private/krb5.conf /etc/krb5.conf
+
+Explicación: Esto permite que Kerberos use la configuración de Samba para autenticación.
+
+Paso 5: Configurar firewall
+firewall-cmd --permanent --add-service={ldap,ldaps,kerberos,dns}
+firewall-cmd --permanent --add-port={53,88,135,139,389,445,464,636,3268,3269}/tcp
+firewall-cmd --permanent --add-port={53,88,123,138,389,464}/udp
+firewall-cmd --permanent --add-port=49152-65535/tcp
+firewall-cmd --reload
+
+Explicación: Permite que los servicios esenciales de AD (LDAP, DNS, Kerberos, SMB) funcionen correctamente en la red.
+
+Paso 6: Configurar DNS en la interfaz
+nmcli con mod eth0 ipv4.dns 192.168.0.199
+nmcli con mod eth0 ipv4.ignore-auto-dns yes
+nmcli con up eth0
+
+Explicación: Hace que tu servidor use su propia IP para resolución DNS del dominio.
+
+Paso 7: Crear usuario administrador del dominio
+samba-tool domain passwordsettings set --complexity=off
+
+samba-tool user create lanegracubana "20252263" \
+--given-name="La Negra" --surname="Cubana" \
+--mail=lanegracubana@os3.inet
+
+samba-tool group addmembers "Domain Admins" lanegracubana
+samba-tool group listmembers "Domain Admins"
+
+Explicación:
+
+Desactiva la complejidad de contraseñas (para pruebas)
+
+Crea un usuario con privilegios de administrador en AD
+
+Paso 8: Verificar dominio
+samba-tool domain info 192.168.0.199
+samba-tool user list
+samba-tool computer list
+
+Explicación: Comprueba que tu AD está activo y muestra usuarios y computadoras registradas.
+
+Paso 9: Agregar registros DNS
+samba-tool dns add 192.168.0.199 OS3.inet www A 192.168.0.100 -U lanegracubana
+
+Explicación: Registra una IP de un cliente Windows para pruebas en el dominio.
+
+Paso 10: Unir la máquina Windows al dominio
+
+En Windows, cambia el DNS de la tarjeta de red al servidor 192.168.0.199.
+
+Presiona Win + R → sysdm.cpl → "Nombre del equipo" → "Cambiar"
+
+Selecciona Miembro de un dominio → Ingresa OS3.inet
+
+Usuario: lanegracubana
+
+Contraseña: 20252263
+
+💡 Al hacer ping a OS3.inet desde Windows debería responder la IP del servidor.
+
