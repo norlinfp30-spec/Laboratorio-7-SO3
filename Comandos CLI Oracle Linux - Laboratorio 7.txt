@@ -102,3 +102,117 @@ Verificar montaje
 ls /mnt/nfs
 
 Confirma que el directorio se monta automáticamente y los archivos están disponibles.
+
+Practica 2
+ Instalación de SAMBA
+sudo dnf install samba samba-client samba-common -y
+
+Instala los paquetes necesarios para habilitar el servicio Samba en el sistema.
+Incluye herramientas tanto para servidor como para cliente.
+
+ Activación de Servicios
+sudo systemctl enable --now smb nmb
+
+smb: Servicio principal para compartir archivos
+
+nmb: Servicio para resolución de nombres en red (NetBIOS)
+
+Se habilitan para iniciar automáticamente y se ejecutan inmediatamente.
+
+ Creación de Directorio Compartido
+sudo mkdir /samba
+
+Se crea la carpeta que será compartida en la red.
+
+👥 Creación de Grupo y Usuario
+sudo groupadd smbgrupo
+sudo useradd -m -G smbgrupo usuario1
+sudo passwd usuario1
+
+Se crea un grupo para gestionar permisos
+
+Se crea un usuario y se asigna al grupo
+
+Se establece una contraseña para autenticación
+
+ Registro del Usuario en SAMBA
+sudo smbpasswd -a usuario1
+
+Permite que el usuario pueda autenticarse específicamente en el servicio Samba.
+
+ Asignación de Permisos
+sudo chown -R usuario1:smbgrupo /samba
+sudo chmod -R 777 /samba
+
+Se asigna la propiedad del directorio al usuario y grupo
+
+Se otorgan permisos completos (lectura, escritura y ejecución)
+
+ Nota: En entornos productivos, se recomienda usar permisos más restrictivos.
+
+ Configuración del Firewall
+sudo systemctl enable --now firewalld
+sudo firewall-cmd --permanent --add-service=samba
+sudo firewall-cmd --reload
+
+Permite el tráfico necesario para Samba a través del firewall del sistema.
+
+ Configuración de SELinux
+sudo setenforce 0
+
+Desactiva SELinux temporalmente para evitar bloqueos en la configuración.
+
+ En producción, se recomienda configurar políticas en lugar de desactivarlo.
+
+ Configuración del Archivo smb.conf
+sudo nano /etc/samba/smb.conf
+
+Se agrega la siguiente configuración:
+
+[samba]
+ path = /samba
+ browsable = yes
+ writable = yes
+ valid users = @smbgrupo
+ guest ok = no
+ create mask = 0777
+ directory mask = 0777
+Explicación:
+
+path: Ruta del recurso compartido
+
+browsable: Visible en la red
+
+writable: Permite escritura
+
+valid users: Restringe acceso al grupo
+
+guest ok: Desactiva acceso anónimo
+
+create mask / directory mask: Permisos por defecto
+
+ Verificación de Configuración
+testparm
+
+Valida que la configuración de Samba no tenga errores.
+
+Reinicio del Servicio
+sudo systemctl restart smb nmb
+
+Aplica todos los cambios realizados en la configuración.
+
+Creación de Archivos de Prueba
+cd /samba
+for i in {1..100}; do touch adrian${i}.txt; done
+
+Genera 100 archivos para validar el acceso desde clientes remotos.
+
+Acceso desde Windows
+\\192.168.0.199\samba
+
+Permite acceder al recurso compartido desde un equipo Windows utilizando la red local.
+
+Verificación de Sincronización
+tail -f /samba/adrian99.txt
+
+Permite monitorear cambios en tiempo real para comprobar la comunicación entre sistemas.
