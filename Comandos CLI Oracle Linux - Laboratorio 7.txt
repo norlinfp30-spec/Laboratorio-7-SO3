@@ -378,3 +378,21 @@ Contraseña: 20252263
 
 💡 Al hacer ping a OS3.inet desde Windows debería responder la IP del servidor.
 
+nano /etc/systemd/system/samba.service
+
+[Unit]
+Description=Samba AD Daemon
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/local/samba/sbin/samba
+ExecStop=/bin/kill -TERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+
+systemctl daemon-reexec
+systemctl daemon-reload
+systemctl enable samba
+systemctl start samba
