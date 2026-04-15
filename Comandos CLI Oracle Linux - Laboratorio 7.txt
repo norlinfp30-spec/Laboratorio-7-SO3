@@ -337,6 +337,11 @@ nmcli con up eth0
 Explicación: Hace que tu servidor use su propia IP para resolución DNS del dominio.
 
 Paso 7: Crear usuario administrador del dominio
+export PATH=/usr/local/samba/bin:/usr/local/samba/sbin:$PATH
+source ~/.bash_profile
+
+echo 'export PATH=/usr/local/samba/bin:/usr/local/samba/sbin:$PATH' >> ~/.bashrc
+source ~/.bashrc
 samba-tool domain passwordsettings set --complexity=off
 
 samba-tool user create lanegracubana "20252263" \
