@@ -245,7 +245,7 @@ Explicación: Asocia IP y nombre de host para resolución interna de nombres.
 dnf -y update
 
 # Instalar repositorios y herramientas adicionales
-dnf install -y oracle-epel-release-el10
+dnf install -y oracle-epel-release-el9
 sudo dnf config-manager --set-enabled ol9_codeready_builder
 dnf makecache
 dnf -y install wget tar gcc make python3-devel
