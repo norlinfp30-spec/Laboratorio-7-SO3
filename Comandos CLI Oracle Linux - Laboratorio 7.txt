@@ -404,4 +404,5 @@ Contraseña: 20252263
 
 💡 Al hacer ping a OS3.inet desde Windows debería responder la IP del servidor.
 
-
+samba-tool user setpassword lanegracubana --newpassword=20252263
+samba-tool dns add localhost OS3.inet www A 192.168.0.100 -U lanegracubana
